@@ -1,0 +1,96 @@
+/**
+ * @fileoverview Firestore Security Rules
+ *
+ * @description
+ * This ruleset enforces a strict user-ownership model for an AWS cost tracking
+ * application. All data is privately scoped to the authenticated user who created it.
+ * The rules are designed to be highly secure and performant by leveraging path-based
+ * security, which avoids the need for extra database reads (`get()` calls) during
+ * authorization checks.
+ *
+ * Core Philosophy:
+ * A user has full control over their own data, but no visibility or access to
+ * any other user's data.
+ *
+ * Data Structure:
+ * All user-specific data is nested under the `/users/{userId}` path. This
+ * creates a secure sandbox for each user's information.
+ * - /users/{userId}/awsAccounts/{awsAccountId}: Stores a user's AWS account info.
+ * - /users/{userId}/awsAccounts/{awsAccountId}/costRecords/{costRecordId}: Stores
+ *   cost data related to a specific AWS account.
+ *
+ * Key Security Decisions:
+ * - Strict Ownership: All access control is based on the `{userId}` wildcard in
+ *   the path matching the authenticated user's UID.
+ * - No Public Data: There are no globally readable collections.
+ * - No User Listing: It is impossible to list documents in the top-level `/users`
+ *   collection.
+ * - Path Integrity: Rules on create/update enforce that document fields used
+ *   for relationships (like `id` and `awsAccountId`) align with the document's
+ *   path, ensuring data consistency.
+ *
+ * Denormalization for Authorization:
+ * The security model relies entirely on the document's path for authorization. The
+ * `userId` in the path is the sole source of truth for ownership, making the rules
+ * fast, simple, and eliminating the need for costly lookups on related documents.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions to improve readability and consistency.
+
+    /**
+     * Checks if a user is authenticated.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * Checks if the currently authenticated user's UID matches the provided userId.
+     * This is the core of the ownership-based security model.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * For update and delete operations, checks for ownership AND that the document
+     * already exists. This prevents modifying or deleting non-existent data.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description Rules for a user's collection of AWS accounts.
+     * @path /users/{userId}/awsAccounts/{awsAccountId}
+     * @allow (create) An authenticated user can create an 'awsAccount' document under their own user ID.
+     * @deny (create) A user cannot create an 'awsAccount' document under another user's ID.
+     * @principle Restricts access to a user's own data tree.
+     */
+    match /users/{userId}/awsAccounts/{awsAccountId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.id == awsAccountId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Rules for cost records associated with a specific AWS account.
+     * @path /users/{userId}/awsAccounts/{awsAccountId}/costRecords/{costRecordId}
+     * @allow (get) An authenticated user can read a 'costRecord' linked to their own AWS account.
+     * @deny (list) A user cannot list cost records for another user's AWS account.
+     * @principle Enforces inherited ownership from the parent document path.
+     */
+    match /users/{userId}/awsAccounts/{awsAccountId}/costRecords/{costRecordId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.id == costRecordId && request.resource.data.awsAccountId == awsAccountId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id && request.resource.data.awsAccountId == resource.data.awsAccountId;
+      allow delete: if isExistingOwner(userId);
+    }
+  }
+}

@@ -1,0 +1,120 @@
+{
+  "entities": {
+    "AwsAccount": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AwsAccount",
+      "type": "object",
+      "description": "Represents an AWS account being tracked.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the AWS account."
+        },
+        "accountId": {
+          "type": "string",
+          "description": "The AWS account ID."
+        },
+        "accountName": {
+          "type": "string",
+          "description": "A descriptive name for the AWS account."
+        }
+      },
+      "required": [
+        "id",
+        "accountId",
+        "accountName"
+      ]
+    },
+    "CostRecord": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "CostRecord",
+      "type": "object",
+      "description": "Represents a cost record for an AWS account for a specific period.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the cost record."
+        },
+        "awsAccountId": {
+          "type": "string",
+          "description": "Reference to AwsAccount. (Relationship: AwsAccount 1:N CostRecord)"
+        },
+        "serviceName": {
+          "type": "string",
+          "description": "The name of the AWS service (e.g., EC2, S3)."
+        },
+        "cost": {
+          "type": "number",
+          "description": "The cost incurred for the service during the period."
+        },
+        "recordDate": {
+          "type": "string",
+          "description": "The date of the cost record.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "awsAccountId",
+        "serviceName",
+        "cost",
+        "recordDate"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}/awsAccounts/{awsAccountId}",
+        "definition": {
+          "entityName": "AwsAccount",
+          "schema": {
+            "$ref": "#/backend/entities/AwsAccount"
+          },
+          "description": "Stores AWS account information for a specific user. Path-based ownership ensures only the user can access their AWS accounts. Implicitly includes 'userId' for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The ID of the user."
+            },
+            {
+              "name": "awsAccountId",
+              "description": "The ID of the AWS account."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/awsAccounts/{awsAccountId}/costRecords/{costRecordId}",
+        "definition": {
+          "entityName": "CostRecord",
+          "schema": {
+            "$ref": "#/backend/entities/CostRecord"
+          },
+          "description": "Stores cost records for a specific AWS account and user. Path-based ownership ensures only the user can access their cost records. Implicitly includes 'userId' and 'awsAccountId' for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The ID of the user."
+            },
+            {
+              "name": "awsAccountId",
+              "description": "The ID of the AWS account."
+            },
+            {
+              "name": "costRecordId",
+              "description": "The ID of the cost record."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore data structure is designed to provide a scalable and secure solution for tracking AWS costs. It prioritizes authorization independence and simplifies security rules by denormalizing authorization data. The structure uses path-based ownership for user-specific data and collections with homogeneous security postures.\n\n**Authorization Independence and Security:**\n\n*   **No `get()` calls:** The data structure avoids the need for `get()` calls in security rules, crucial for maintaining atomic operations and simplifying security logic.\n*   **Path-Based Ownership:** The structure uses `/users/{userId}/awsAccounts/{awsAccountId}` to establish clear ownership, ensuring only the authenticated user can access their AWS accounts.\n\n**Structure and QAPs:**\n\n*   **Segregation:** The data is segregated into collections with homogeneous security requirements. User-specific AWS accounts and their associated cost records are stored in separate subcollections, ensuring consistent security policies.\n*   **QAPs Support:** List operations are secured by leveraging the path-based ownership. Security rules can efficiently validate access based on the authenticated user's ID and the hierarchical data structure.\n\n**Denormalization:**\nTo ensure authorization independence and simplify security rules, user-specific details (such as `userId`) are implicitly present in the subcollection paths for AWS accounts and CostRecords. This eliminates the need to fetch parent document data for authorization, enabling atomic operations and enhancing security rule efficiency."
+  }
+}
