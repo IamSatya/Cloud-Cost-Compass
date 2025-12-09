@@ -1,6 +1,7 @@
 "use client"
 
 import type { AccountCost } from "@/lib/types";
+import Link from "next/link";
 import {
   Card,
   CardContent,
@@ -29,7 +30,7 @@ export default function AccountOverview({ data, isLoading }: AccountOverviewProp
     <Card>
       <CardHeader>
         <CardTitle>Account Overview</CardTitle>
-        <CardDescription>Cost breakdown by AWS account.</CardDescription>
+        <CardDescription>Cost breakdown by AWS account. Click an account for details.</CardDescription>
       </CardHeader>
       <CardContent>
         <Table>
@@ -58,9 +59,9 @@ export default function AccountOverview({ data, isLoading }: AccountOverviewProp
                 </TableRow>
               ))}
             {data?.map((account) => (
-              <TableRow key={account.accountId}>
+              <TableRow key={account.accountId} className="cursor-pointer hover:bg-muted/50">
                 <TableCell>
-                  <div className="flex items-center gap-3">
+                  <Link href={`/accounts/${account.accountId}`} className="flex items-center gap-3">
                     <Avatar className="h-10 w-10">
                       <AvatarFallback>{account.accountName.charAt(0)}</AvatarFallback>
                     </Avatar>
@@ -68,10 +69,12 @@ export default function AccountOverview({ data, isLoading }: AccountOverviewProp
                       <div className="font-medium">{account.accountName}</div>
                       <div className="text-sm text-muted-foreground">{account.accountId}</div>
                     </div>
-                  </div>
+                  </Link>
                 </TableCell>
                 <TableCell className="text-right font-medium">
-                  ${account.cost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  <Link href={`/accounts/${account.accountId}`} className="block">
+                    ${account.cost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </Link>
                 </TableCell>
               </TableRow>
             ))}

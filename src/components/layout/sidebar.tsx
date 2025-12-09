@@ -19,9 +19,9 @@ interface AppSidebarProps {
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: Home },
-  { href: "#", label: "Reports", icon: BarChart3 },
-  { href: "#", label: "Settings", icon: Settings },
-  { href: "#", label: "Support", icon: LifeBuoy },
+  { href: "/reports", label: "Reports", icon: BarChart3 },
+  { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/support", label: "Support", icon: LifeBuoy },
 ];
 
 export default function AppSidebar({ isMobile = false }: AppSidebarProps) {
