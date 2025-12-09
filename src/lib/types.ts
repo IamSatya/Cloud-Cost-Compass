@@ -9,9 +9,18 @@ export interface ServiceCost {
 }
   
 export interface AccountCost {
+    id: string;
     accountId: string;
     accountName: string;
     cost: number;
+}
+
+export interface AwsAccount {
+    id: string;
+    accountId: string;
+    accountName: string;
+    accessKeyId: string;
+    secretAccessKey: string;
 }
 
 export interface PeriodCostData {
@@ -19,7 +28,7 @@ export interface PeriodCostData {
     costTrend: number; // percentage change
     timeline: CostDataPoint[];
     byService: ServiceCost[];
-    byAccount: AccountCost[];
+    byAccount: Omit<AccountCost, 'cost'>[]; // The mock flow returns accounts without cost
 }
   
 export interface AwsCostData {

@@ -3,8 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
-import type { AwsCostData, AccountCost } from '@/lib/types';
-import { generateMockData } from '@/lib/mock-data';
+import type { AwsCostData, AccountCost, AwsAccount } from '@/lib/types';
 import AppSidebar from '@/components/layout/sidebar';
 import AppHeader from '@/components/layout/header';
 import { Button } from '@/components/ui/button';
@@ -14,6 +13,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useDoc, useUser, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
+import { fetchAwsCostData } from '@/ai/flows/fetch-aws-costs';
 
 
 export default function AccountDetailPage({ params }: { params: { accountId: string } }) {
@@ -28,21 +28,38 @@ export default function AccountDetailPage({ params }: { params: { accountId: str
     return doc(firestore, `users/${user.uid}/awsAccounts`, params.accountId);
   }, [user, firestore, params.accountId]);
 
-  const { data: account, isLoading: isAccountLoading } = useDoc<AccountCost>(accountRef);
+  const { data: account, isLoading: isAccountLoading } = useDoc<AwsAccount>(accountRef);
 
   const [isCostLoading, setIsCostLoading] = useState(true);
 
   useEffect(() => {
-    setIsCostLoading(true);
-    const data = generateMockData();
-    // Simulate network delay
-    const timer = setTimeout(() => {
-        setCostData(data);
-        setIsCostLoading(false);
-    }, 500);
+    async function getCostData() {
+        if (!account) {
+            setIsCostLoading(false);
+            setCostData(null);
+            return;
+        }
 
-    return () => clearTimeout(timer);
-  }, [params.accountId, timePeriod]);
+        try {
+            setIsCostLoading(true);
+            const data = await fetchAwsCostData({
+                accountId: account.accountId,
+                accessKeyId: account.accessKeyId,
+                secretAccessKey: account.secretAccessKey,
+            });
+            setCostData(data);
+        } catch (error) {
+            console.error("Failed to fetch cost data:", error);
+            setCostData(null);
+        } finally {
+            setIsCostLoading(false);
+        }
+    }
+
+    if (!isAccountLoading) {
+        getCostData();
+    }
+  }, [account, isAccountLoading, timePeriod]);
   
   const periodData = costData?.[timePeriod];
   const accountSpecificServices = periodData?.byService.map(service => ({
