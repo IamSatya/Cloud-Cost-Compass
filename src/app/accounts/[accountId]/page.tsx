@@ -12,26 +12,33 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import ServiceOverview from '@/components/dashboard/service-overview';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useDoc, useUser, useFirestore, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
+
 
 export default function AccountDetailPage({ params }: { params: { accountId: string } }) {
-  const [account, setAccount] = useState<AccountCost | null | undefined>(undefined);
   const [costData, setCostData] = useState<AwsCostData | null>(null);
   const [timePeriod, setTimePeriod] = useState<keyof AwsCostData>('daily');
-  const [isLoading, setIsLoading] = useState(true);
+  
+  const { user } = useUser();
+  const firestore = useFirestore();
+
+  const accountRef = useMemoFirebase(() => {
+    if (!user || !firestore) return null;
+    return doc(firestore, `users/${user.uid}/awsAccounts`, params.accountId);
+  }, [user, firestore, params.accountId]);
+
+  const { data: account, isLoading: isAccountLoading } = useDoc<AccountCost>(accountRef);
+
+  const [isCostLoading, setIsCostLoading] = useState(true);
 
   useEffect(() => {
-    setIsLoading(true);
+    setIsCostLoading(true);
     const data = generateMockData();
-    const periodData = data[timePeriod];
-    const currentAccount = periodData.byAccount.find(
-      (a) => a.accountId === params.accountId
-    );
-    
     // Simulate network delay
     const timer = setTimeout(() => {
         setCostData(data);
-        setAccount(currentAccount);
-        setIsLoading(false);
+        setIsCostLoading(false);
     }, 500);
 
     return () => clearTimeout(timer);
@@ -43,6 +50,8 @@ export default function AccountDetailPage({ params }: { params: { accountId: str
       cost: service.cost * (Math.random() * 0.5 + 0.2) // Simulate account-specific service cost
   })).sort((a,b) => b.cost - a.cost);
   const accountTotal = accountSpecificServices?.reduce((sum, s) => sum + s.cost, 0);
+
+  const isLoading = isAccountLoading || isCostLoading;
 
 
   return (
@@ -56,7 +65,7 @@ export default function AccountDetailPage({ params }: { params: { accountId: str
                 <Link href="/"><ArrowLeft className="h-4 w-4" /></Link>
             </Button>
             {isLoading && <Skeleton className="h-8 w-64" />}
-            {account === undefined && !isLoading && (
+            {account === null && !isLoading && (
                  <h1 className="text-xl font-semibold text-destructive">Account not found</h1>
             )}
             {account && (
@@ -78,7 +87,7 @@ export default function AccountDetailPage({ params }: { params: { accountId: str
                     <CardTitle>No Data</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <p>There is no cost data available for this account in the selected period.</p>
+                    <p>There is no data available for this account.</p>
                 </CardContent>
             </Card>
           )}

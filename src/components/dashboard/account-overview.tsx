@@ -2,6 +2,9 @@
 
 import type { AccountCost } from "@/lib/types";
 import Link from "next/link";
+import { collection } from "firebase/firestore";
+import { useCollection, useUser, useFirestore, useMemoFirebase } from "@/firebase";
+
 import {
   Card,
   CardContent,
@@ -20,12 +23,22 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
-interface AccountOverviewProps {
-  data: AccountCost[] | undefined;
-  isLoading: boolean;
-}
+export default function AccountOverview() {
+  const { user } = useUser();
+  const firestore = useFirestore();
 
-export default function AccountOverview({ data, isLoading }: AccountOverviewProps) {
+  const accountsQuery = useMemoFirebase(() => {
+    if (!user || !firestore) return null;
+    return collection(firestore, `users/${user.uid}/awsAccounts`);
+  }, [user, firestore]);
+
+  const { data: accounts, isLoading } = useCollection<Omit<AccountCost, 'cost'>>(accountsQuery);
+
+  const accountData: AccountCost[] | undefined = accounts?.map(acc => ({
+    ...acc,
+    cost: Math.random() * 1000 // Placeholder cost
+  })).sort((a,b) => b.cost - a.cost);
+
   return (
     <Card>
       <CardHeader>
@@ -58,10 +71,10 @@ export default function AccountOverview({ data, isLoading }: AccountOverviewProp
                   </TableCell>
                 </TableRow>
               ))}
-            {data?.map((account) => (
+            {accountData?.map((account) => (
               <TableRow key={account.accountId} className="cursor-pointer hover:bg-muted/50">
                 <TableCell>
-                  <Link href={`/accounts/${account.accountId}`} className="flex items-center gap-3">
+                  <Link href={`/accounts/${account.id}`} className="flex items-center gap-3">
                     <Avatar className="h-10 w-10">
                       <AvatarFallback>{account.accountName.charAt(0)}</AvatarFallback>
                     </Avatar>
@@ -72,16 +85,16 @@ export default function AccountOverview({ data, isLoading }: AccountOverviewProp
                   </Link>
                 </TableCell>
                 <TableCell className="text-right font-medium">
-                  <Link href={`/accounts/${account.accountId}`} className="block">
+                  <Link href={`/accounts/${account.id}`} className="block">
                     ${account.cost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </Link>
                 </TableCell>
               </TableRow>
             ))}
-             {!isLoading && (!data || data.length === 0) && (
+             {!isLoading && (!accountData || accountData.length === 0) && (
               <TableRow>
                 <TableCell colSpan={2} className="text-center text-muted-foreground">
-                  No account data available.
+                  No accounts found. Add one in Settings.
                 </TableCell>
               </TableRow>
             )}

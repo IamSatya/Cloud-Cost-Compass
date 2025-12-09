@@ -3,6 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { doc, collection } from "firebase/firestore";
 
 import AppSidebar from "@/components/layout/sidebar";
 import AppHeader from "@/components/layout/header";
@@ -18,31 +19,47 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { useUser, useFirestore } from "@/firebase";
+import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 const accountFormSchema = z.object({
   accountName: z.string().min(2, "Account name must be at least 2 characters."),
   accountId: z.string().regex(/^\d{12}$/, "Account ID must be 12 digits."),
-  accessKey: z.string().min(16, "Access key is required."),
-  secretKey: z.string().min(32, "Secret key is required."),
 });
 
 type AccountFormValues = z.infer<typeof accountFormSchema>;
 
 export default function SettingsPage() {
   const { toast } = useToast();
+  const { user } = useUser();
+  const firestore = useFirestore();
+
   const form = useForm<AccountFormValues>({
     resolver: zodResolver(accountFormSchema),
     defaultValues: {
       accountName: "",
       accountId: "",
-      accessKey: "",
-      secretKey: "",
     },
   });
 
   function onSubmit(data: AccountFormValues) {
-    console.log("Adding new account:", data);
-    // Placeholder for actual logic to save the account
+    if (!user || !firestore) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "You must be logged in to add an account.",
+      });
+      return;
+    }
+
+    const newAccountRef = doc(collection(firestore, `users/${user.uid}/awsAccounts`));
+    const accountData = {
+      ...data,
+      id: newAccountRef.id,
+    };
+    
+    setDocumentNonBlocking(newAccountRef, accountData, { merge: true });
+
     toast({
       title: "Account Added",
       description: `The account "${data.accountName}" has been added successfully.`,
@@ -93,33 +110,7 @@ export default function SettingsPage() {
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={form.control}
-                    name="accessKey"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>AWS Access Key ID</FormLabel>
-                        <FormControl>
-                          <Input type="password" placeholder="AKIA..." {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="secretKey"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>AWS Secret Access Key</FormLabel>
-                        <FormControl>
-                          <Input type="password" placeholder="••••••••••••••••••••" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <Button type="submit">Add Account</Button>
+                  <Button type="submit" disabled={!user}>Add Account</Button>
                 </form>
               </Form>
             </CardContent>
