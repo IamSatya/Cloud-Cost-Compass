@@ -17,12 +17,22 @@
         "accountName": {
           "type": "string",
           "description": "A descriptive name for the AWS account."
+        },
+        "accessKeyId": {
+          "type": "string",
+          "description": "The AWS Access Key ID for programmatic access."
+        },
+        "secretAccessKey": {
+          "type": "string",
+          "description": "The AWS Secret Access Key for programmatic access."
         }
       },
       "required": [
         "id",
         "accountId",
-        "accountName"
+        "accountName",
+        "accessKeyId",
+        "secretAccessKey"
       ]
     },
     "CostRecord": {

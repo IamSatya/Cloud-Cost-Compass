@@ -25,6 +25,8 @@ import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 const accountFormSchema = z.object({
   accountName: z.string().min(2, "Account name must be at least 2 characters."),
   accountId: z.string().regex(/^\d{12}$/, "Account ID must be 12 digits."),
+  accessKeyId: z.string().min(16, "Access Key ID seems too short.").max(128, "Access Key ID seems too long."),
+  secretAccessKey: z.string().min(16, "Secret Access Key seems too short.").max(128, "Secret Access Key seems too long."),
 });
 
 type AccountFormValues = z.infer<typeof accountFormSchema>;
@@ -39,6 +41,8 @@ export default function SettingsPage() {
     defaultValues: {
       accountName: "",
       accountId: "",
+      accessKeyId: "",
+      secretAccessKey: "",
     },
   });
 
@@ -78,7 +82,7 @@ export default function SettingsPage() {
             <CardHeader>
               <CardTitle>Add New Account</CardTitle>
               <CardDescription>
-                Enter the details for the new AWS account you want to track.
+                Enter the details for the new AWS account you want to track. Credentials are stored securely.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -105,6 +109,32 @@ export default function SettingsPage() {
                         <FormLabel>Account ID</FormLabel>
                         <FormControl>
                           <Input placeholder="123456789012" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="accessKeyId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>AWS Access Key ID</FormLabel>
+                        <FormControl>
+                          <Input placeholder="AKIAIOSFODNN7EXAMPLE" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                   <FormField
+                    control={form.control}
+                    name="secretAccessKey"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>AWS Secret Access Key</FormLabel>
+                        <FormControl>
+                          <Input type="password" placeholder="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
