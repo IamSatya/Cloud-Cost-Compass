@@ -47,6 +47,7 @@ export default function Dashboard() {
         />
         <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
           <CostSummaryCards data={periodData} isLoading={isLoading} />
+          <AccountOverview data={periodData?.byAccount} isLoading={isLoading} />
           <div className="grid gap-4 md:gap-8 lg:grid-cols-2 xl:grid-cols-3">
             <div className="xl:col-span-2">
               <CostChart data={periodData?.timeline} isLoading={isLoading} />
@@ -57,7 +58,6 @@ export default function Dashboard() {
               isLoading={isLoading}
             />
           </div>
-          <AccountOverview data={periodData?.byAccount} isLoading={isLoading} />
         </main>
       </div>
     </div>
